@@ -1,10 +1,12 @@
 # Таблиця лексем мови
 tableOfLanguageTokens = {'program': 'keyword', 'if': 'keyword', 'do': 'keyword', 'while': 'keyword', 'enddo': 'keyword',
+                         'print': 'keyword', 'read': 'keyword',
                          'int': 'keyword', 'double': 'keyword', 'bool': 'keyword', ';': 'semicolon', ',': 'coma',
-                         '=': 'assign_op', '.': 'dot', ' ': 'ws', '\t': 'ws', '\n': 'nl', '-': 'add_op', '+': 'add_op',
-                         '*': 'mult_op', '/': 'mult_op', '(': 'par_op', ')': 'par_op', '^': 'pow_op', '{': 'braces_op',
-                         '}': 'braces_op', '<': 'rel_op', '>': 'rel_op', '!=': 'rel_op', '<=': 'rel_op', '>=': 'rel_op',
-                         '==': 'rel_op'}
+                         '=': 'assign_op', '.': 'dot', ' ': 'ws', '\t': 'ws', '\n': 'nl',
+                         '-': 'add_op', '+': 'add_op', '*': 'mult_op', '/': 'div_op', '//': 'div_op', '^': 'pow_op',
+                         '{': 'braces_op', '}': 'braces_op', '(': 'par_op', ')': 'par_op',
+                         '<': 'rel_op', '>': 'rel_op', '!=': 'rel_op', '<=': 'rel_op', '>=': 'rel_op','==': 'rel_op',
+                         '&': '&', '|': '|', '!': 'bool_op', '&&': 'bool_op', '||': 'bool_op'}
 # Решту токенів визначаємо не за лексемою, а за заключним станом
 tableIdentFloatInt = {2: 'ident', 5: 'double', 6: 'int', 10: 'double'}
 
@@ -15,17 +17,18 @@ tableIdentFloatInt = {2: 'ident', 5: 'double', 6: 'int', 10: 'double'}
 # δ - state-transition_function
 stf = {(0, 'Letter'): 1, (1, 'Letter'): 1, (1, 'Digit'): 1, (1, 'other'): 2, (0, 'ws'): 0,
        (0, 'Digit'): 3, (3, 'Digit'): 3, (3, 'dot'): 4, (3, 'other'): 6, (4, 'Digit'): 4, (4, 'other'): 5, (4, 'e'): 10,
-       (0, 'dot'): 7, (7, 'other'): 401, (7, 'Digit'): 4,
-       (0, 'assign_op'): 12, (11, 'assign_op'): 11, (11, 'other'): 12,
-       (0, 'rel_op'): 16, (16, 'assign_op'): 17, (16, 'other'): 18,
+       (0, 'dot'): 7, (7, 'other'): 401, (7, 'Digit'): 4, (4, 'e'): 9, (9, 'Digit'): 9, (9, 'other'): 10,
+       (0, 'assign_op'): 11, (11, 'assign_op'): 16, (11, 'other'): 12, (0, 'rel_op'): 11, (0, '!'): 11,
+       (0, '&'): 17, (17, '&'): 18, (17, 'other'): 402, (0, '|'): 19, (19, '|'): 20, (19, 'other'): 403,
+       (0, 'add_op'): 8, (0, 'mult_op'): 8, (0, 'pow_op'): 8, (0, 'div_op'): 21, (21, 'div_op'): 22, (21, 'other'): 23,
        (0, 'nl'): 13, (0, 'semicolon'): 14, (0, 'par_op'): 15, (0, 'braces_op'): 15, (0, 'coma'): 14,
        (0, 'other'): 404
        }
 
 initState = 0  # q0 - стартовий стан
-F = {2, 5, 6, 8, 10, 12, 13, 14, 15, 17, 18, 401, 404}
+F = {2, 5, 6, 8, 10, 12, 13, 14, 15, 16, 18, 20, 22, 23, 401, 402, 403, 404}
 Fstar = {2, 5, 6, 10}  # зірочка
-Ferror = {401, 404}  # обробка помилок
+Ferror = {401, 402, 403, 404}  # обробка помилок
 
 tableOfId = {}  # Таблиця ідентифікаторів
 tableOfConst = {}  # Таблиць констант
@@ -87,12 +90,19 @@ def processing():
         lexeme = ''
         numChar = putCharBack(numChar)  # зірочка
         state = initState
-    if state in (12, 14, 15, 8, 17, 18):  # 12:         # assign_op # in (12,14):
+    if state in (14, 15, 8, 16, 18, 20, 22, 23):  # 12:         # assign_op # in (12,14):
         lexeme += char
         token = getToken(state, lexeme)
         print('{0:<3d} {1:<10s} {2:<10s} '.format(numLine, lexeme, token))
         tableOfSymb[len(tableOfSymb) + 1] = (numLine, lexeme, token, '')
         lexeme = ''
+        state = initState
+    if state == 12:
+        token = getToken(state, lexeme)
+        print('{0:<3d} {1:<10s} {2:<10s} '.format(numLine, lexeme, token))
+        tableOfSymb[len(tableOfSymb) + 1] = (numLine, lexeme, token, '')
+        lexeme = ''
+        numChar = putCharBack(numChar)  # зірочка
         state = initState
     if state in Ferror:  # (401,404):  # ERROR
         fail()
@@ -101,12 +111,9 @@ def processing():
 def fail():
     global state, numLine, char
     print(numLine)
-    if state == 404:
+    if state in (401, 403, 402, 404):
         print('Lexer: у рядку ', numLine, ' неочікуваний символ ' + char)
-        exit(404)
-    if state == 401:
-        print('Lexer: у рядку ', numLine, ' неочікуваний символ ' + char)
-        exit(401)
+        exit(state)
 
 
 def is_final(state):
@@ -131,6 +138,7 @@ def putCharBack(numChar):
 
 
 def classOfChar(char):
+    global state
     if char in '.':
         res = "dot"
     elif char in ',':
@@ -139,16 +147,20 @@ def classOfChar(char):
         res = "semicolon"
     elif char in 'abcdefghijklmnopqrstuvwxyz':
         res = "Letter"
+        if state == 4 and char == 'e':
+            res = 'e'
     elif char in "0123456789":
         res = "Digit"
     elif char in " \t":
         res = "ws"
     elif char in "\n":
         res = "nl"
-    elif char in "*/":
+    elif char in "*":
         res = 'mult_op'
     elif char in "^":
         res = 'pow_op'
+    elif char in "/":
+        res = 'div_op'
     elif char in "+-":
         res = 'add_op'
     elif char in "=":
@@ -157,8 +169,10 @@ def classOfChar(char):
         res = "par_op"
     elif char in "{}":
         res = "braces_op"
-    elif char in "!<>":
+    elif char in "<>":
         res = "rel_op"
+    elif char in "!&|":
+        res = char
     else:
         res = 'символ не належить алфавіту'
     return res
@@ -168,7 +182,11 @@ def getToken(state, lexeme):
     try:
         return tableOfLanguageTokens[lexeme]
     except KeyError:
-        return tableIdentFloatInt[state]
+        try:
+            return tableIdentFloatInt[state]
+        except KeyError:
+            print("error unexpected token " + lexeme)
+            exit(401)
 
 
 def indexIdConst(state, lexeme):
