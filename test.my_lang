@@ -1,15 +1,6 @@
 program main {
-    int a = 3;
-	double b = 5.0e5;
-		do while(a>b)
-			a = a + 1;
-			if(a<5){
-				print(a);
-				read(b);
-				a = b^a;
-				b = b//a;
-			}
-		enddo
+  int a = 1;
+  do while (a < 5)
+    a = a+1;
+   enddo
 }
-
-

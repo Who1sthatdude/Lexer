@@ -1,6 +1,6 @@
 from Lexer import lex
-from Lexer import tableOfSymb  # , tableOfVar, tableOfConst
-from Lexer import tableOfId
+from Lexer import tableOfSymb
+from Lexer import tableOfId, tableToPrint, tableOfConst, sourceCode, FSuccess
 
 lex()
 print('-' * 30)
@@ -9,19 +9,28 @@ print('-' * 30)
 
 # номер рядка таблиці розбору/лексем/символів ПРОГРАМИ tableOfSymb
 numRow = 1
-bracesCount = 0
+postfixCode = []
 
 # довжина таблиці символів програми
 # він же - номер останнього запису
 len_tableOfSymb = len(tableOfSymb)
+toView = False
 print(('len_tableOfSymb', len_tableOfSymb))
 
 
 # Функція для розбору за правилом
 # Program = program StatementList end
 # читає таблицю розбору tableOfSymb
+
+
+def postfixTranslator():
+    # чи був успішним лексичний розбір
+    if (True, 'Lexer') == FSuccess:
+        return parseProgram()
+
+
 def parseProgram():
-    global numRow
+    global numRow, FSuccess
     try:
         # перевірити наявність ключового слова 'program'
         parseToken('program', 'keyword', '')
@@ -30,12 +39,13 @@ def parseProgram():
         parseToken('{', 'braces_op', '')
         parseStatementList()
 
-        # перевірити наявність ключового слова 'end'
+        # перевірити наявність закриваючої скобки
         parseToken('}', 'braces_op', '')
 
         # повідомити про синтаксичну коректність програми
         print('Parser: Синтаксичний аналіз завершився успішно')
-        return True
+        FSuccess = (True, 'Translator')
+        return FSuccess
     except SystemExit as e:
         # Повідомити про факт виявлення помилки
         print('Parser: Аварійне завершення програми з кодом {0}'.format(e))
@@ -139,7 +149,7 @@ def parseStatement():
     # якщо токен - ідентифікатор
     # обробити інструкцію присвоювання
     if tok == 'ident':
-        if tableOfId[lex] in ('int', 'double', 'bool'):
+        if tableOfId[lex][1] in ('int', 'double', 'bool'):
             parseAssign()
             parseToken(';', 'semicolon', '')
             return True
@@ -188,6 +198,11 @@ def parseAssign():
     # взяти поточну лексему
     numLine, lex, tok = getSymb()
 
+    postfixCode.append((lex, tok))  # Трансляція
+    # ПОЛІЗ ідентифікатора - ідентифікатор
+
+    if toView: configToPrint(lex, numRow)
+
     # встановити номер нової поточної лексеми
     numRow += 1
 
@@ -196,6 +211,8 @@ def parseAssign():
     if parseToken('=', 'assign_op', '\t\t\t\t\t'):
         # розібрати арифметичний вираз
         parseExpression()
+        postfixCode.append(('=', 'assign_op'))
+        if toView: configToPrint('=', numRow)
         return True
     else:
         return False
@@ -215,6 +232,10 @@ def parseExpression():
             numRow += 1
             print('\t' * 6 + 'в рядку {0} - {1}'.format(numLine, (lex, tok)))
             parseTerm()
+            postfixCode.append((lex, tok))
+            # lex - бінарний оператор  '+' чи '-'
+            # додається після своїх операндів
+            if toView: configToPrint(lex, numRow)
         else:
             F = False
     return True
@@ -233,6 +254,10 @@ def parseTerm():
             numRow += 1
             print('\t' * 6 + 'в рядку {0} - {1}'.format(numLine, (lex, tok)))
             parseFactor()
+            postfixCode.append((lex, tok))
+            # lex - бінарний оператор  '*' чи '/'
+            # додається після своїх операндів
+            if toView: configToPrint(lex, numRow)
         else:
             F = False
     return True
@@ -246,7 +271,11 @@ def parseFactor():
 
     # перша і друга альтернативи для Factor
     # якщо лексема - це константа або ідентифікатор
-    if tok in ('int', 'double', 'ident'):
+    if tok in ('int', 'double', 'ident', 'BoolLit'):
+        postfixCode.append((lex, tok))  # Трансляція
+        # ПОЛІЗ константи або ідентифікатора
+        # відповідна константа або ідентифікатор
+        if toView: configToPrint(lex, numRow)
         numRow += 1
         print('\t' * 7 + 'в рядку {0} - {1}'.format(numLine, (lex, tok)))
 
@@ -272,8 +301,11 @@ def parseIf():
     if lex == 'if' and tok == 'keyword':
         numRow += 1
         parseBoolExpr()
+        jf_token = ["JF", "JF", None]
+        postfixCode.append(jf_token)
         parseToken('{', 'braces_op', '\t' * 5)
         parseStatementList()
+        jf_token[2] = len(postfixCode) - 1
         parseToken('}', 'braces_op', '\t' * 5)
         return True
     else:
@@ -296,7 +328,9 @@ def parseBoolExpr():
 
 
 def parseInit(identName, type):
-    tableOfId[identName] = type
+    temp = list(tableOfId[identName])
+    temp[1] = type
+    tableOfId[identName] = tuple(temp)
     return True
 
 
@@ -305,8 +339,13 @@ def parseDoWhile():
     _, lex, tok = getSymb()
     if lex == 'while' and tok == 'keyword':
         numRow += 1
+        jump_tok = ["JUMP", "JUMP", len(postfixCode) - 1]
         parseBoolExpr()
+        jf_tok = ["JF", "JF", None]
+        postfixCode.append(jf_tok)
         parseStatementList()
+        postfixCode.append(jump_tok)
+        jf_tok[2] = len(postfixCode) - 1
         parseToken('enddo', 'keyword', '\t' * 5)
         return True
     else:
@@ -321,6 +360,18 @@ def parseInOut():
     parseToken(';', 'semicolon', '')
     return True
 
+def configToPrint(lex, numRow):
+    stage = '\nКрок трансляції\n'
+    stage += 'лексема: \'{0}\'\n'
+    stage += 'tableOfSymb[{1}] = {2}\n'
+    stage += 'postfixCode = {3}\n'
+    # tpl = (lex,numRow,str(tableOfSymb[numRow]),str(postfixCode))
+    print(stage.format(lex, numRow, str(tableOfSymb[numRow]), str(postfixCode)))
 
 # запуск парсера
-parseProgram()
+postfixTranslator()
+
+# tableToPrint('All')
+# tableToPrint('Symb')
+
+print('\nКод програми у постфіксній формі (ПОЛІЗ): \n{0}'.format(postfixCode))

@@ -1,11 +1,11 @@
 # Таблиця лексем мови
 tableOfLanguageTokens = {'program': 'keyword', 'if': 'keyword', 'do': 'keyword', 'while': 'keyword', 'enddo': 'keyword',
-                         'print': 'keyword', 'read': 'keyword',
+                         'print': 'keyword', 'read': 'keyword', 'True': 'BoolLit', 'False': 'BoolLit',
                          'int': 'keyword', 'double': 'keyword', 'bool': 'keyword', ';': 'semicolon', ',': 'coma',
                          '=': 'assign_op', '.': 'dot', ' ': 'ws', '\t': 'ws', '\n': 'nl',
                          '-': 'add_op', '+': 'add_op', '*': 'mult_op', '/': 'div_op', '//': 'div_op', '^': 'pow_op',
                          '{': 'braces_op', '}': 'braces_op', '(': 'par_op', ')': 'par_op',
-                         '<': 'rel_op', '>': 'rel_op', '!=': 'rel_op', '<=': 'rel_op', '>=': 'rel_op','==': 'rel_op',
+                         '<': 'rel_op', '>': 'rel_op', '!=': 'rel_op', '<=': 'rel_op', '>=': 'rel_op', '==': 'rel_op',
                          '&': '&', '|': '|', '!': 'bool_op', '&&': 'bool_op', '||': 'bool_op'}
 # Решту токенів визначаємо не за лексемою, а за заключним станом
 tableIdentFloatInt = {2: 'ident', 5: 'double', 6: 'int', 10: 'double'}
@@ -78,19 +78,19 @@ def processing():
     if state == 13:  # \n
         numLine += 1
         state = initState
-    if state in (2, 5, 6, 10):  # keyword, ident, double, int
+    if state in (2, 5, 6, 10, 23):  # keyword, ident, double, int
         token = getToken(state, lexeme)
         if token != 'keyword':  # не keyword
-            index = indexIdConst(state, lexeme)
+            index = indexIdConst(state, lexeme, token)
             print('{0:<3d} {1:<10s} {2:<10s} {3:<2d} '.format(numLine, lexeme, token, index))
             tableOfSymb[len(tableOfSymb) + 1] = (numLine, lexeme, token, index)
         else:  # якщо keyword
-            print('{0:<3d} {1:<10s} {2:<10s} '.format(numLine, lexeme, token))  # print(numLine,lexeme,token)
+            print('{0:<3d} {1:<10s} {2:<10s} '.format(numLine, lexeme, token))
             tableOfSymb[len(tableOfSymb) + 1] = (numLine, lexeme, token, '')
         lexeme = ''
         numChar = putCharBack(numChar)  # зірочка
         state = initState
-    if state in (14, 15, 8, 16, 18, 20, 22, 23):  # 12:         # assign_op # in (12,14):
+    if state in (14, 15, 8, 16, 18, 20, 22):
         lexeme += char
         token = getToken(state, lexeme)
         print('{0:<3d} {1:<10s} {2:<10s} '.format(numLine, lexeme, token))
@@ -104,7 +104,7 @@ def processing():
         lexeme = ''
         numChar = putCharBack(numChar)  # зірочка
         state = initState
-    if state in Ferror:  # (401,404):  # ERROR
+    if state in Ferror:  # (401,402, 403, 404):  # ERROR
         fail()
 
 
@@ -145,7 +145,7 @@ def classOfChar(char):
         res = "coma"
     elif char in ';':
         res = "semicolon"
-    elif char in 'abcdefghijklmnopqrstuvwxyz':
+    elif char in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIGKLMNOPQRSTUVWYZ':
         res = "Letter"
         if state == 4 and char == 'e':
             res = 'e'
@@ -189,25 +189,78 @@ def getToken(state, lexeme):
             exit(401)
 
 
-def indexIdConst(state, lexeme):
+def indexIdConst(state, lexeme, token):
     indx = 0
     if state == 2:
-        indx = tableOfId.get(lexeme)
+        indx1 = tableOfId.get(lexeme)
         #		token=getToken(state,lexeme)
-        if indx is None:
+        if indx1 is None:
             indx = len(tableOfId) + 1
-            tableOfId[lexeme] = indx
+            tableOfId[lexeme] = (indx, 'type_undef', 'val_undef')
     if state == 5 or state == 10:
-        indx = tableOfConst.get(lexeme)
-        if indx is None:
+        indx1 = tableOfConst.get(lexeme)
+        if indx1 is None:
             indx = len(tableOfConst) + 1
-            tableOfConst[lexeme] = indx
+            val = float(lexeme)
+            tableOfConst[lexeme] = (indx, token, val)
+    if lexeme in('True', 'False') and token == 'BoolLit':
+        indx1 = tableOfConst.get(lexeme)
+        if indx1 is None:
+            indx = len(tableOfConst) + 1
+            val = lexeme
+            tableOfConst[lexeme] = (indx, token, val)
     if state == 6:
-        indx = tableOfConst.get(lexeme)
-        if indx is None:
+        indx1 = tableOfConst.get(lexeme)
+        if indx1 is None:
             indx = len(tableOfConst) + 1
-            tableOfConst[lexeme] = indx
+            val = int(lexeme)
+            tableOfConst[lexeme] = (indx, token, val)
     return indx
+
+
+def tableToPrint(Tbl):
+    if Tbl == "Symb":
+        tableOfSymbToPrint()
+    elif Tbl == "Id":
+        tableOfIdToPrint()
+    elif Tbl == "Const":
+        tableOfConstToPrint()
+    else:
+        tableOfSymbToPrint()
+        tableOfIdToPrint()
+        tableOfConstToPrint()
+    return True
+
+
+def tableOfSymbToPrint():
+    print("\n Таблиця символів")
+    s1 = '{0:<10s} {1:<10s} {2:<10s} {3:<10s} {4:<5s} '
+    s2 = '{0:<10d} {1:<10d} {2:<10s} {3:<10s} {4:<5s} '
+    print(s1.format("numRec", "numLine", "lexeme", "token", "index"))
+    for numRec in tableOfSymb:  # range(1,lns+1):
+        numLine, lexeme, token, index = tableOfSymb[numRec]
+        print(s2.format(numRec, numLine, lexeme, token, str(index)))
+
+
+def tableOfIdToPrint():
+    print("\n Таблиця ідентифікаторів")
+    s1 = '{0:<10s} {1:<15s} {2:<15s} {3:<10s} '
+    print(s1.format("Ident", "Type", "Value", "Index"))
+    s2 = '{0:<10s} {2:<15s} {3:<15s} {1:<10d} '
+    # for id in tableOfId:
+    #     index, type, val = tableOfId[id]
+    #     print(s2.format(id, index, type, str(val)))
+
+
+def tableOfConstToPrint():
+    print("\n Таблиця констант")
+    s1 = '{0:<10s} {1:<10s} {2:<10s} {3:<10s} '
+    print(s1.format("Const", "Type", "Value", "Index"))
+    s2 = '{0:<10s} {2:<10s} {3:<10} {1:<10d} '
+    for cnst in tableOfConst:
+        index, type, val = tableOfConst[cnst]
+        print(s2.format(str(cnst), index, type, val))
+
 
 
 # запуск лексичного аналізатора
