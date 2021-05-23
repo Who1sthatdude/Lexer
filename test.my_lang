@@ -1,6 +1,8 @@
 program main {
-  int a = 1;
-  do while (a < 5)
-    a = a+1;
+   int a = 5;
+   do while(a == 5)
+        a = a+1;
    enddo
+   read(b);
+   print(b);
 }

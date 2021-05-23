@@ -46,10 +46,10 @@ def postfixProcessing():
                     i = new_idx
             elif full_tok[1] == "JUMP":
                 i = process_jump(full_tok)
-            # elif full_tok[1] == "PRINT":
-            #     process_print()
-            # elif full_tok[1] == "READ":
-            #     process_read()
+            elif full_tok[1] == "PRINT":
+                process_print()
+            elif full_tok[1] == "READ":
+                process_read()
             else:
                 doIt(full_tok[0], full_tok[1])
             i += 1
@@ -110,6 +110,20 @@ def doIt(lex, tok):
             # stack.push()
             pass
     return True
+
+def process_print():
+    tmp = stack.pop()
+    if tmp[1] == 'ident':
+        print(f"{tmp[0]} = {tableOfId[tmp[0]][2]}")
+    else:
+        print(tmp[0])
+
+def process_read():
+    tmp = stack.pop()
+    user_input = input(f"Enter {tmp[0]}: ")
+    if not user_input.isnumeric():
+        failRunTime("bad user input", user_input)
+    tableOfId[tmp[0]] = (tableOfId[tmp[0]][0], tableOfId[tmp[0]][1], float(user_input))
 
 
 def processing_add_mult_op(ltL, lex, ltR):

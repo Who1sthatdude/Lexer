@@ -197,24 +197,28 @@ def indexIdConst(state, lexeme, token):
         if indx1 is None:
             indx = len(tableOfId) + 1
             tableOfId[lexeme] = (indx, 'type_undef', 'val_undef')
-    if state == 5 or state == 10:
-        indx1 = tableOfConst.get(lexeme)
-        if indx1 is None:
-            indx = len(tableOfConst) + 1
-            val = float(lexeme)
-            tableOfConst[lexeme] = (indx, token, val)
-    if lexeme in('True', 'False') and token == 'BoolLit':
-        indx1 = tableOfConst.get(lexeme)
-        if indx1 is None:
-            indx = len(tableOfConst) + 1
-            val = lexeme
-            tableOfConst[lexeme] = (indx, token, val)
-    if state == 6:
-        indx1 = tableOfConst.get(lexeme)
-        if indx1 is None:
-            indx = len(tableOfConst) + 1
-            val = int(lexeme)
-            tableOfConst[lexeme] = (indx, token, val)
+
+    try:
+        if state == 5 or state == 10:
+            indx1 = tableOfConst.get(lexeme)
+            if indx1 is None:
+                indx = len(tableOfConst) + 1
+                val = float(lexeme)
+                tableOfConst[lexeme] = (indx, token, val)
+        if lexeme in('True', 'False') and token == 'BoolLit':
+            indx1 = tableOfConst.get(lexeme)
+            if indx1 is None:
+                indx = len(tableOfConst) + 1
+                val = lexeme
+                tableOfConst[lexeme] = (indx, token, val)
+        if state == 6:
+            indx1 = tableOfConst.get(lexeme)
+            if indx1 is None:
+                indx = len(tableOfConst) + 1
+                val = int(lexeme)
+                tableOfConst[lexeme] = (indx, token, val)
+    except Exception as e:
+        fail()
     return indx
 
 

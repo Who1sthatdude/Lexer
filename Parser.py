@@ -129,6 +129,10 @@ def failParse(str, tuple):
                                                                                                            expected))
         exit(3)
 
+    elif str == 'ідентифікатор не був об\'явлений':
+        lex = tuple
+        print(str + ': ' + lex)
+        exit(4)
 
 # Функція для розбору за правилом для StatementList
 # StatementList = Statement  { Statement }
@@ -174,9 +178,14 @@ def parseStatement():
         parseDoWhile()
         return True
 
-    elif lex in ('print', 'read') and tok in ('keyword'):
+    elif lex == 'print' and tok in ('keyword'):
         numRow += 1
-        parseInOut()
+        parsePrint()
+        return True
+
+    elif lex == 'read' and tok in ('keyword'):
+        numRow += 1
+        parseRead()
         return True
 
     # тут - ознака того, що всі інструкції були коректно
@@ -244,16 +253,16 @@ def parseExpression():
 def parseTerm():
     global numRow
     print('\t' * 6 + 'parseTerm():')
-    parseFactor()
+    parseFactorPow()
     F = True
     # продовжувати розбирати Множники (Factor)
     # розділені лексемами '*' або '/'
     while F:
         numLine, lex, tok = getSymb()
-        if tok in ('mult_op', 'div_op', 'pow_op'):
+        if tok in ('mult_op', 'div_op'):
             numRow += 1
             print('\t' * 6 + 'в рядку {0} - {1}'.format(numLine, (lex, tok)))
-            parseFactor()
+            parseFactorPow()
             postfixCode.append((lex, tok))
             # lex - бінарний оператор  '*' чи '/'
             # додається після своїх операндів
@@ -262,6 +271,27 @@ def parseTerm():
             F = False
     return True
 
+
+def parseFactorPow():
+    global numRow
+    print('\t' * 6 + 'parseFactorPow():')
+    parseFactor()
+    F = True
+    # продовжувати розбирати Множники (Factor)
+    # розділені лексемами '*' або '/'
+    while F:
+        numLine, lex, tok = getSymb()
+        if tok == 'pow_op':
+            numRow += 1
+            print('\t' * 6 + 'в рядку {0} - {1}'.format(numLine, (lex, tok)))
+            parseFactorPow()
+            postfixCode.append((lex, tok))
+            # lex - бінарний оператор  '*' чи '/'
+            # додається після своїх операндів
+            if toView: configToPrint(lex, numRow)
+        else:
+            F = False
+    return True
 
 def parseFactor():
     global numRow
@@ -351,6 +381,29 @@ def parseDoWhile():
     else:
         return False
 
+def parsePrint():
+        parseToken('(', 'par_op', '\t' * 5)
+        parseExpression()
+        postfixCode.append(("PRINT", "PRINT"))
+        parseToken(')', 'par_op', '\t' * 5)
+        parseToken(';', 'semicolon', '')
+
+def parseRead():
+    global numRow
+    parseToken('(', 'par_op', '\t' * 5)
+    parseIdent()
+    postfixCode.append(("READ", "READ"))
+    parseToken(')', 'par_op', '\t' * 5)
+    parseToken(';', 'semicolon', "")
+
+def parseIdent():
+    global numRow
+    numLine, lex, tok = getSymb()
+    if tableOfId[lex][1] == 'type_undef':
+        failParse('ідентифікатор не був об\'явлений', (lex))
+    numRow += 1
+    postfixCode.append((lex, tok))
+
 
 def parseInOut():
     global numRow
@@ -359,6 +412,7 @@ def parseInOut():
     parseToken(')', 'par_op', '')
     parseToken(';', 'semicolon', '')
     return True
+
 
 def configToPrint(lex, numRow):
     stage = '\nКрок трансляції\n'
@@ -375,3 +429,4 @@ postfixTranslator()
 # tableToPrint('Symb')
 
 print('\nКод програми у постфіксній формі (ПОЛІЗ): \n{0}'.format(postfixCode))
+print(tableOfId)
