@@ -5,5 +5,5 @@ StopLang has two simple instructions:
 * if(bool statement) { operations block }
 
 ## Typization:
-StopLang provides strong typization. In order to create a identifier first you have to specify it's type.  
+StopLang provides strong typization. In order to create an identifier first you have to specify it's type.  
 For example: **int a, bool b, double c**
